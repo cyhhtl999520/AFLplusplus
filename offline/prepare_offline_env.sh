@@ -214,6 +214,11 @@ info "已下载 ${DEB_COUNT} 个 .deb 包"
 info "初始化 git 子模块（qemuafl / unicornafl / 等）..."
 cd "$REPO_ROOT"
 if [ -d .git ] || git rev-parse --git-dir >/dev/null 2>&1; then
+  # Git ≥ 2.35.2 refuses to operate on directories owned by a different user
+  # (common in Docker when the repo is bind-mounted or cloned by another UID).
+  # Mark the whole tree as safe so submodule clones succeed.
+  git config --global --add safe.directory "$REPO_ROOT"
+  git config --global --add safe.directory '*'
   git submodule update --init --recursive
   info "子模块初始化完成。"
 else
