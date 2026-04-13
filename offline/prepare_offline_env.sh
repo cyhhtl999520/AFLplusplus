@@ -181,8 +181,9 @@ _download_pkgs() {
   local label="$1"; shift
   info "下载 $label 包..."
   apt-get clean
-  # --download-only：仅下载，不安装；-y：自动确认
-  apt-get install -y --download-only "$@" 2>&1 | grep -E "^\(|^Get|^Ign|^\[" || true
+  # --download-only：仅下载，不安装；--reinstall：即使已安装也重新下载，
+  # 确保离线包集合完整（prepare 阶段预装了部分工具，不加 --reinstall 会漏下）
+  apt-get install -y --download-only --reinstall "$@" 2>&1 | grep -E "^\(|^Get|^Ign|^\[" || true
   find /var/cache/apt/archives/ -maxdepth 1 -name "*.deb" -exec cp -n {} "$APT_DIR/" \;
   apt-get clean
 }

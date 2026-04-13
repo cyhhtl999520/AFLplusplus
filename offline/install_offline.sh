@@ -114,7 +114,8 @@ cat > /etc/apt/sources.list.d/local-offline-afl.list <<EOF
 deb [trusted=yes] file://${LOCAL_REPO} ./
 EOF
 info "本地 apt 源：file://$LOCAL_REPO"
-apt-get update -qq
+# 移除 -qq 以便能看到 apt update 的实际错误
+apt-get update 2>&1 | grep -vE '^(Hit|Ign|Get):' | head -20 || warn "apt-get update 遇到问题，继续..."
 
 # --------------------------------------------------------------------------- #
 # 安装依赖包
@@ -166,17 +167,27 @@ QEMU_PKGS=(
 )
 
 info "安装基础构建工具..."
-apt-get install -y "${BASE_PKGS[@]}" 2>&1 | tail -5 || \
+apt-get install -y --allow-unauthenticated "${BASE_PKGS[@]}" 2>&1 | tail -5 || \
   warn "部分基础包安装失败，继续尝试..."
 
 info "安装 LLVM ${LLVM_VER} 工具链..."
-apt-get install -y "${LLVM_PKGS[@]}" 2>&1 | tail -5 || \
+apt-get install -y --allow-unauthenticated "${LLVM_PKGS[@]}" 2>&1 | tail -5 || \
   warn "部分 LLVM 包安装失败，继续尝试..."
 
 if [ "$BUILD_MODE" = "full" ]; then
   info "安装 QEMU 模式依赖..."
-  apt-get install -y "${QEMU_PKGS[@]}" 2>&1 | tail -5 || \
+  apt-get install -y --allow-unauthenticated "${QEMU_PKGS[@]}" 2>&1 | tail -5 || \
     warn "部分 QEMU 依赖安装失败，继续尝试..."
+fi
+
+# 如果 make 仍不可用（apt 安装失败），用 dpkg 直接安装所有离线包作为兜底
+if ! command -v make &>/dev/null; then
+  warn "make 未找到（apt 安装可能不完整），使用 dpkg 直接安装所有离线包..."
+  dpkg -i --force-depends "$LOCAL_REPO"/*.deb 2>&1 | tail -20 || true
+  dpkg --configure -a 2>&1 | tail -10 || true
+  # 第二遍：修复依赖顺序问题
+  dpkg -i "$LOCAL_REPO"/*.deb 2>&1 | tail -5 || true
+  dpkg --configure -a 2>&1 | tail -5 || true
 fi
 
 # --------------------------------------------------------------------------- #
