@@ -105,7 +105,7 @@ info "GCC 版本: $GCC_VER"
 info "更新 apt 索引并安装下载工具..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq wget curl gnupg ca-certificates apt-utils dpkg-dev
+apt-get install -y -qq wget curl gnupg ca-certificates apt-utils dpkg-dev git
 
 # --------------------------------------------------------------------------- #
 # 添加 LLVM 14 apt 仓库（用于下载最新 LLVM 包）
@@ -213,8 +213,14 @@ info "已下载 ${DEB_COUNT} 个 .deb 包"
 # --------------------------------------------------------------------------- #
 info "初始化 git 子模块（qemuafl / unicornafl / 等）..."
 cd "$REPO_ROOT"
-git submodule update --init --recursive
-info "子模块初始化完成。"
+if [ -d .git ] || git rev-parse --git-dir >/dev/null 2>&1; then
+  git submodule update --init --recursive
+  info "子模块初始化完成。"
+else
+  warn "当前目录不是 git 仓库，跳过子模块初始化。"
+  warn "请确保 qemu_mode/qemuafl、unicorn_mode/unicornafl 等子目录已有内容，"
+  warn "否则在联网机器上的 git 仓库中运行本脚本以获取完整子模块。"
+fi
 
 # --------------------------------------------------------------------------- #
 # 完整模式：下载 Frida devkit
