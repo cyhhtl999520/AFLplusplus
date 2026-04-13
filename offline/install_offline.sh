@@ -102,10 +102,12 @@ fi
 
 # 屏蔽默认联网 apt 源，避免在断网环境下 apt-get update 访问外网报错
 info "屏蔽默认 Ubuntu apt 源（离线模式不需要联网）..."
-> /etc/apt/sources.list
-find /etc/apt/sources.list.d/ -name "*.list" \
-  ! -name "local-offline-afl.list" \
-  -exec mv {} {}.disabled \; 2>/dev/null || true
+truncate -s 0 /etc/apt/sources.list
+if [ -d /etc/apt/sources.list.d/ ]; then
+  find /etc/apt/sources.list.d/ -name "*.list" \
+    ! -name "local-offline-afl.list" \
+    -exec mv {} {}.disabled \; || warn "屏蔽部分 apt 源文件失败，继续..."
+fi
 
 # 写入本地离线源配置
 cat > /etc/apt/sources.list.d/local-offline-afl.list <<EOF
