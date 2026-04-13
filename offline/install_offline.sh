@@ -188,6 +188,8 @@ if ! command -v make &>/dev/null; then
   # 第二遍：修复依赖顺序问题
   dpkg -i "$LOCAL_REPO"/*.deb 2>&1 | tail -5 || true
   dpkg --configure -a 2>&1 | tail -5 || true
+  # 尝试用 apt-get -f 修复残余的损坏依赖
+  apt-get install -f -y --allow-unauthenticated 2>&1 | tail -10 || true
 fi
 
 # --------------------------------------------------------------------------- #

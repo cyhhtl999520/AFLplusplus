@@ -179,11 +179,20 @@ mkdir -p "$APT_DIR"
 
 _download_pkgs() {
   local label="$1"; shift
-  info "下载 $label 包..."
+  info "下载 $label 包（含全部传递依赖）..."
+  # 用 apt-cache depends --recurse 展开完整依赖树（含已安装的包），
+  # 确保离线包集合在全新目标机器上也能满足所有依赖。
+  local all_pkgs
+  all_pkgs=$(apt-cache depends --recurse --no-recommends --no-suggests \
+    --no-conflicts --no-breaks --no-replaces --no-enhances \
+    "$@" 2>/dev/null \
+    | grep "^\w" | grep -v "<" | sort -u | tr '\n' ' ')
   apt-get clean
   # --download-only：仅下载，不安装；--reinstall：即使已安装也重新下载，
   # 确保离线包集合完整（prepare 阶段预装了部分工具，不加 --reinstall 会漏下）
-  apt-get install -y --download-only --reinstall "$@" 2>&1 | grep -E "^\(|^Get|^Ign|^\[" || true
+  # shellcheck disable=SC2086
+  apt-get install -y --download-only --reinstall $all_pkgs 2>&1 \
+    | grep -E "^\(|^Get|^Ign|^\[" || true
   find /var/cache/apt/archives/ -maxdepth 1 -name "*.deb" -exec cp -n {} "$APT_DIR/" \;
   apt-get clean
 }
