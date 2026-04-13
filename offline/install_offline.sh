@@ -100,7 +100,14 @@ if [ -f "$APT_DIR/llvm-snapshot.gpg" ]; then
   info "LLVM GPG 密钥已导入。"
 fi
 
-# 写入 sources.list 配置
+# 屏蔽默认联网 apt 源，避免在断网环境下 apt-get update 访问外网报错
+info "屏蔽默认 Ubuntu apt 源（离线模式不需要联网）..."
+> /etc/apt/sources.list
+find /etc/apt/sources.list.d/ -name "*.list" \
+  ! -name "local-offline-afl.list" \
+  -exec mv {} {}.disabled \; 2>/dev/null || true
+
+# 写入本地离线源配置
 cat > /etc/apt/sources.list.d/local-offline-afl.list <<EOF
 deb [trusted=yes] file://${LOCAL_REPO} ./
 EOF
