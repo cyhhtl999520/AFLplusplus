@@ -124,6 +124,14 @@ else
   CROSS_PREFIX=
 fi
 
+if [ -n "$NO_CHECKOUT" ]; then
+  # In offline/Docker builds the qemuafl directory is often owned by a
+  # different UID, causing Git 2.35.2+ to refuse to operate on it.
+  # Register a safe.directory exception so that git commands (e.g. those
+  # invoked by QEMU's configure script) succeed.
+  git config --global --add safe.directory "$(pwd)" 2>/dev/null || true
+fi
+
 echo "[*] Configuring QEMU for $CPU_TARGET..."
 
 ORIG_CPU_TARGET="$CPU_TARGET"
@@ -280,6 +288,12 @@ if [ "$PROFILING" = "1" ]; then
     --enable-profiler \
     "
 
+fi
+
+if [ -n "$NO_CHECKOUT" ]; then
+  # Do not attempt to clone/update QEMU's own git submodules in offline mode;
+  # just validate that the pre-populated directories exist.
+  QEMU_CONF_FLAGS="$QEMU_CONF_FLAGS --with-git-submodules=validate"
 fi
 
 # shellcheck disable=SC2086
