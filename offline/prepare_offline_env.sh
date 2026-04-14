@@ -180,21 +180,37 @@ mkdir -p "$APT_DIR"
 _download_pkgs() {
   local label="$1"; shift
   info "下载 $label 包（含全部传递依赖）..."
-  # 用 apt-cache depends --recurse 展开完整依赖树（含已安装的包），
-  # 确保离线包集合在全新目标机器上也能满足所有依赖。
+  # 用 apt-cache depends --recurse 展开完整依赖树（含已安装的包）。
+  # 严格正则 ^[a-z0-9][a-z0-9.+\-]*$ 同时过滤掉：
+  #   • 虚包格式   <pkg>         （含尖括号）
+  #   • 架构限定名 pkg:any / pkg:amd64 （含冒号）
+  # ——这两类名称若被传入 apt-get install，会导致整批下载原子性中止。
   local all_pkgs
   all_pkgs=$(apt-cache depends --recurse --no-recommends --no-suggests \
     --no-conflicts --no-breaks --no-replaces --no-enhances \
     "$@" 2>/dev/null \
-    | grep "^\w" | grep -v "<" | sort -u | tr '\n' ' ')
-  apt-get clean
-  # --download-only：仅下载，不安装；--reinstall：即使已安装也重新下载，
-  # 确保离线包集合完整（prepare 阶段预装了部分工具，不加 --reinstall 会漏下）
+    | grep -E "^[a-z0-9][a-z0-9.+\-]*$" | sort -u)
+  # 将显式请求的包也加入列表，防止 apt-cache 输出遗漏根节点
+  all_pkgs=$(printf '%s\n%s\n' "$all_pkgs" "$(printf '%s\n' "$@")" \
+    | grep -E "^[a-z0-9][a-z0-9.+\-]*$" | sort -u)
+
+  # apt-get download：
+  #   • 不安装，只把 .deb 写到当前目录
+  #   • 无论包是否已安装都会下载（规避 prepare 机器预装工具遗漏依赖问题）
+  #   • 逐包调用：单个包失败不阻塞其他包（解决原子性中止问题）
+  local tmpdir
+  tmpdir=$(mktemp -d)
+  # 先批量尝试（快速路径）
   # shellcheck disable=SC2086
-  apt-get install -y --download-only --reinstall $all_pkgs 2>&1 \
-    | grep -E "^\(|^Get|^Ign|^\[" || true
-  find /var/cache/apt/archives/ -maxdepth 1 -name "*.deb" -exec cp -n {} "$APT_DIR/" \;
-  apt-get clean
+  if ! ( cd "$tmpdir" && apt-get download $all_pkgs 2>&1 | grep -vE "^(W:|$)" ); then
+    info "批量下载遇到问题，改用逐包下载（较慢但更健壮）..."
+    while IFS= read -r pkg; do
+      [ -n "$pkg" ] || continue
+      ( cd "$tmpdir" && apt-get download "$pkg" 2>/dev/null ) || true
+    done <<< "$all_pkgs"
+  fi
+  find "$tmpdir" -maxdepth 1 -name "*.deb" -exec cp -n {} "$APT_DIR/" \;
+  rm -rf "$tmpdir"
 }
 
 _download_pkgs "基础构建工具" "${BASE_PKGS[@]}"

@@ -192,6 +192,11 @@ if ! command -v make &>/dev/null; then
   apt-get install -f -y --allow-unauthenticated 2>&1 | tail -10 || true
 fi
 
+# make 仍不可用说明离线包集合不完整（build-essential / make 未被下载）
+if ! command -v make &>/dev/null; then
+  die "make 仍然未找到。离线包集合不完整——请在联网环境重新运行 prepare_offline_env.sh 后重试。"
+fi
+
 # --------------------------------------------------------------------------- #
 # 配置 clang/llvm update-alternatives（使 afl-clang-fast 能找到正确版本）
 # --------------------------------------------------------------------------- #
