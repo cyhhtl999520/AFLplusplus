@@ -77,17 +77,25 @@ if [ $? -eq 0 ]; then
   git submodule update ./qemuafl 2>/dev/null # ignore errors
 else
   echo "[*] cloning qemuafl"
-  test -d qemuafl/.git || {
-    CNT=1
-    while [ '!' -d qemuafl/.git -a "$CNT" -lt 4 ]; do
-      echo "Trying to clone qemuafl (attempt $CNT/3)"
-      git clone https://github.com/AFLplusplus/qemuafl
-      CNT=`expr "$CNT" + 1`
-    done
-  }
+  if [ -z "$NO_CHECKOUT" ]; then
+    test -d qemuafl/.git || {
+      CNT=1
+      while [ '!' -d qemuafl/.git -a "$CNT" -lt 4 ]; do
+        echo "Trying to clone qemuafl (attempt $CNT/3)"
+        git clone https://github.com/AFLplusplus/qemuafl
+        CNT=`expr "$CNT" + 1`
+      done
+    }
+  fi
 fi
 
-test -e qemuafl/.git || { echo "[-] Not checked out, please install git or check your internet connection." ; exit 1 ; }
+test -e qemuafl/.git || {
+  echo "[-] qemuafl not found. Please check your internet connection or,"
+  echo "    for offline builds, ensure the qemuafl submodule source is"
+  echo "    pre-populated (run 'git submodule update --init qemu_mode/qemuafl'"
+  echo "    on a networked machine and copy the full directory here)."
+  exit 1
+}
 echo "[+] Got qemuafl."
 
 cd "qemuafl" || exit 1
