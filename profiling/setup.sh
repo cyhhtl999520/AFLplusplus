@@ -50,7 +50,7 @@ done
 info "检查 Python 依赖..."
 python3 -c "import matplotlib, pandas" 2>/dev/null \
     && ok "matplotlib 和 pandas 已安装" \
-    || { warn "matplotlib/pandas 未安装，将尝试自动安装..."; pip3 install --quiet matplotlib pandas; }
+    || { warn "matplotlib/pandas 未安装，将尝试自动安装（--user）..."; pip3 install --user --quiet matplotlib pandas; }
 
 # ── 编译 AFL++ (DEBUG=1) ──────────────────────────────────────────────────────
 info "编译 AFL++ (DEBUG=1)，源码目录: $AFL_ROOT ..."

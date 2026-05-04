@@ -123,8 +123,8 @@ elif sudo -n mount --version &>/dev/null 2>&1; then
 else
     warn "无 root/sudo 权限，无法挂载真实 tmpfs"
     warn "改用 /dev/shm（Linux 默认 tmpfs）作为替代..."
-    TMPFS_DIR="/dev/shm/afl-profiling-tmpfs-$$"
-    mkdir -p "$TMPFS_DIR"
+    # mktemp -d 确保目录名唯一，避免多实例并发冲突
+    TMPFS_DIR=$(mktemp -d /dev/shm/afl-profiling-XXXXXX)
     TMPFS_REAL=false
 fi
 

@@ -124,32 +124,17 @@ run_multicore() {
 
 # ── 主循环 ────────────────────────────────────────────────────────────────────
 declare -A EPS_BY_N
-declare -A EPS_BY_N_RUNS
 
 for N in "${PARALLELISM_LIST[@]}"; do
     info "▶ 测试 $N 个 fuzzer 实例..."
-    EPS_SUM=0
-    for i in $(seq 1 1); do   # 多核实验每级运行 1 次（耗时较长）
-        EPS=$(run_multicore "$N" "$OUTDIR/out_n${N}_run${i}")
-        info "  N=$N run $i → 总 execs/sec = $EPS"
-        EPS_SUM=$(python3 -c "print(${EPS_SUM} + ${EPS:-0})")
-    done
-    EPS_BY_N[$N]="$EPS_SUM"
+    # 多核实验每级运行 1 次（耗时较长；可将 RUNS 变量传入此处以支持多次运行取均值）
+    EPS=$(run_multicore "$N" "$OUTDIR/out_n${N}_run1")
+    info "  N=$N → 总 execs/sec = $EPS"
+    EPS_BY_N[$N]="$EPS"
     echo ""
 done
 
 # ── 计算扩展效率并保存 JSON ───────────────────────────────────────────────────
-python3 - <<PYEOF
-import json, pathlib
-
-parallelism = [int(x) for x in "${PARALLELISM_LIST[*]}".split()]
-eps_map = {}
-for n in parallelism:
-    key = f"eps_{n}"
-    # 构建动态 bash 变量引用（已通过 heredoc 注入）
-PYEOF
-
-# 使用更直接的方式传递数据
 python3 - <<PYEOF
 import json, pathlib
 

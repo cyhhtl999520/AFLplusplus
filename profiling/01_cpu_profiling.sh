@@ -82,6 +82,8 @@ sleep 3
 
 # ── perf record ───────────────────────────────────────────────────────────────
 info "perf record 开始采样 (频率 99Hz, 持续 ${FUZZ_DURATION}s)..."
+# --call-graph dwarf 需要目标带调试符号（-g 编译），能获得精确的调用栈。
+# 若 DWARF 解析失败（如无符号信息），可改为 --call-graph fp（帧指针，精度稍低）。
 perf record \
     -F 99 \
     -p "$AFL_PID" \
